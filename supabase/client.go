@@ -17,6 +17,7 @@ var (
 )
 
 func InitSupabase() error {
+	log.Println("Initializing Supabase client...")
 	supabaseURL := os.Getenv("SUPABASE_URL")
 
 	config, err := pgxpool.ParseConfig(supabaseURL)
@@ -31,17 +32,20 @@ func InitSupabase() error {
 	// Prepared Statementの競合を防ぐためにSimple Protocolを優先
 	config.ConnConfig.PreferSimpleProtocol = true
 
+	log.Println("Connecting supabase database...")
 	pool, err = pgxpool.ConnectConfig(ctx, config)
 	if err != nil {
 		return fmt.Errorf("unable to connect to Supabase: %v", err)
 	}
 
 	// 接続の確認
+	log.Println("Pinging supabase database...")
 	err = pool.Ping(ctx)
 	if err != nil {
 		return fmt.Errorf("unable to ping Supabase: %v", err)
 	}
 
+	log.Println("Connected to Supabase successfully")
 	return nil
 }
 
