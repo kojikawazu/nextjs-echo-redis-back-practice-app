@@ -2,6 +2,7 @@ package main
 
 import (
 	"backend/handlers"
+	"backend/myredis"
 	"backend/supabase"
 	"log"
 	"net/http"
@@ -19,6 +20,12 @@ func main() {
 	err := godotenv.Load()
 	if err != nil {
 		log.Println("No .env file found")
+	}
+
+	// Redisの初期化
+	err = myredis.InitRedis()
+	if err != nil {
+		log.Fatalf("Redis initialization failed: %v", err)
 	}
 
 	// Supabaseクライアントの初期化
