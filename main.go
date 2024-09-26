@@ -51,6 +51,10 @@ func main() {
 	e.POST("/api/todos", handlers.CreateTodo)
 	e.PUT("/api/todos/:id", handlers.UpdateTodo)
 	e.DELETE("/api/todos/:id", handlers.DeleteTodo)
+	// ヘルスチェックエンドポイントの追加
+	e.GET("/", func(c echo.Context) error {
+		return c.String(http.StatusOK, "Service is running")
+	})
 
 	// シグナルハンドラーの設定
 	quit := make(chan os.Signal, 1)
