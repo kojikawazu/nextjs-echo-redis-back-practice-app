@@ -1,4 +1,4 @@
-# コマンド一覧
+# Goコマンド一覧
 
 ## モジュールインストール一覧
 
@@ -15,4 +15,13 @@ go get github.com/redis/go-redis/v9
 
 ```bash
 go mod tidy
+```
+
+# Terraformコマンド一覧
+
+```bash
+terraform init
+terraform plan
+terraform apply -auto-approve
+terraform destroy -auto-approve
 ```
