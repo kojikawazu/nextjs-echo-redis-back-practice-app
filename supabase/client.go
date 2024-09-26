@@ -18,7 +18,7 @@ var (
 
 func InitSupabase() error {
 	log.Println("Initializing Supabase client...")
-	supabaseURL := os.Getenv("SUPABASE_URL")
+	supabaseURL := os.Getenv("SUPABASE_URL") + "?sslmode=require"
 
 	config, err := pgxpool.ParseConfig(supabaseURL)
 	if err != nil {
@@ -27,14 +27,14 @@ func InitSupabase() error {
 
 	// コネクションプールの設定
 	config.MaxConns = 10 // 必要に応じて調整
-	config.MaxConnIdleTime = 30 * time.Minute
-
+	config.MaxConnIdleTime = 30 * time.Second
 	// Prepared Statementの競合を防ぐためにSimple Protocolを優先
 	config.ConnConfig.PreferSimpleProtocol = true
 
 	log.Println("Connecting supabase database...")
 	pool, err = pgxpool.ConnectConfig(ctx, config)
 	if err != nil {
+		log.Fatalf("Unable to connect to Supabase: %v", err)
 		return fmt.Errorf("unable to connect to Supabase: %v", err)
 	}
 
@@ -42,6 +42,7 @@ func InitSupabase() error {
 	log.Println("Pinging supabase database...")
 	err = pool.Ping(ctx)
 	if err != nil {
+		log.Fatalf("Unable to ping Supabase: %v", err)
 		return fmt.Errorf("unable to ping Supabase: %v", err)
 	}
 
