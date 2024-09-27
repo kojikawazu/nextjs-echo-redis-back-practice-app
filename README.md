@@ -12,8 +12,19 @@
 - BackEnd
   - Echo
   - Go
-- Redis
-- Supabase
+- Cloud
+  - AWS
+    - VPC
+    - App Runner
+    - ElastiCache
+    - ECR
+- Other
+  - Redis
+  - Supabase
+
+# Architecture
+
+![アーキテクチャ図](./drawio/elasticache.drawio.png)
 
 ## Todo
 
