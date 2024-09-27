@@ -22,6 +22,7 @@ func InitSupabase() error {
 
 	config, err := pgxpool.ParseConfig(supabaseURL)
 	if err != nil {
+		log.Fatalf("Unable to parse database URL: %v", err)
 		return fmt.Errorf("unable to parse database URL: %v", err)
 	}
 
@@ -51,6 +52,7 @@ func InitSupabase() error {
 }
 
 func FetchTodos() ([]models.TodoData, error) {
+	log.Println("Fetching todos from Supabase...")
 	query := `
         SELECT id, user_id, description, completed, created_at, updated_at
         FROM todos
@@ -59,8 +61,10 @@ func FetchTodos() ([]models.TodoData, error) {
 
 	rows, err := pool.Query(ctx, query)
 	if err != nil {
+		log.Fatalf("Failed to fetch todos: %v", err)
 		return nil, err
 	}
+	log.Println("Fetched todos successfully")
 	defer rows.Close()
 
 	var todos []models.TodoData
@@ -76,19 +80,23 @@ func FetchTodos() ([]models.TodoData, error) {
 			&todo.UpdatedAt,
 		)
 		if err != nil {
+			log.Fatalf("Failed to scan todo: %v", err)
 			return nil, err
 		}
 		todos = append(todos, todo)
 	}
 
 	if rows.Err() != nil {
+		log.Fatalf("Failed to fetch todos: %v", rows.Err())
 		return nil, rows.Err()
 	}
 
+	log.Printf("Fetched %d todos", len(todos))
 	return todos, nil
 }
 
 func CreateTodo(todo *models.TodoData) error {
+	log.Println("Creating todo in Supabase...")
 	query := `
         INSERT INTO todos (id, user_id, description, completed, created_at, updated_at)
         VALUES ($1, $2, $3, $4, $5, $6)
@@ -101,13 +109,16 @@ func CreateTodo(todo *models.TodoData) error {
 
 	_, err := pool.Exec(ctx, query, todo.ID, todo.UserID, todo.Description, todo.Completed, todo.CreatedAt, todo.UpdatedAt)
 	if err != nil {
+		log.Fatalf("Failed to create todo: %v", err)
 		return err
 	}
 
+	log.Println("Created todo successfully")
 	return nil
 }
 
 func UpdateTodo(todo *models.TodoData) error {
+	log.Println("Updating todo in Supabase...")
 	query := `
         UPDATE todos
         SET user_id = $1, description = $2, completed = $3, updated_at = $4
@@ -118,17 +129,21 @@ func UpdateTodo(todo *models.TodoData) error {
 
 	cmdTag, err := pool.Exec(ctx, query, todo.UserID, todo.Description, todo.Completed, todo.UpdatedAt, todo.ID)
 	if err != nil {
+		log.Fatalf("Failed to update todo: %v", err)
 		return err
 	}
 
 	if cmdTag.RowsAffected() == 0 {
+		log.Fatalf("No todo found with id %s", todo.ID)
 		return fmt.Errorf("no todo found with id %s", todo.ID)
 	}
 
+	log.Println("Updated todo successfully")
 	return nil
 }
 
 func DeleteTodo(id string) error {
+	log.Println("Deleting todo in Supabase...")
 	query := `
         DELETE FROM todos
         WHERE id = $1
@@ -136,13 +151,16 @@ func DeleteTodo(id string) error {
 
 	cmdTag, err := pool.Exec(ctx, query, id)
 	if err != nil {
+		log.Fatalf("Failed to delete todo: %v", err)
 		return err
 	}
 
 	if cmdTag.RowsAffected() == 0 {
+		log.Fatalf("No todo found with id %s", id)
 		return fmt.Errorf("no todo found with id %s", id)
 	}
 
+	log.Println("Deleted todo successfully")
 	return nil
 }
 
@@ -154,21 +172,26 @@ func ClosePool() {
 }
 
 func TestQuery() error {
+	log.Println("Testing query...")
 	query := `SELECT 1`
 	rows, err := pool.Query(ctx, query)
 	if err != nil {
+		log.Fatalf("Failed to test query: %v", err)
 		return err
 	}
+	log.Println("Test query successful")
 	defer rows.Close()
 
 	for rows.Next() {
 		var num int
 		err := rows.Scan(&num)
 		if err != nil {
+			log.Fatalf("Failed to scan test query result: %v", err)
 			return err
 		}
 		fmt.Println("Test Query Result:", num)
 	}
 
+	log.Println("Test query completed")
 	return rows.Err()
 }

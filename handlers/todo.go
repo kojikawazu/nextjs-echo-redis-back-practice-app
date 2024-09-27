@@ -16,10 +16,12 @@ import (
 )
 
 func GetTodos(c echo.Context) error {
+	log.Println("Fetching todos...")
 	ctx := context.Background()
 
 	// Redisクライアントの取得
 	rdb := myredis.GetRedisClient()
+	log.Println("Connected to Redis successfully")
 
 	// Redisからキャッシュを取得
 	cachedTodos, err := rdb.Get(ctx, "todos").Result()
@@ -28,7 +30,7 @@ func GetTodos(c echo.Context) error {
 		log.Println("Cache miss: fetching data from Supabase")
 		todos, err := supabase.FetchTodos()
 		if err != nil {
-			log.Printf("Error fetching todos from Supabase: %v", err)
+			log.Fatalf("Error fetching todos from Supabase: %v", err)
 			return c.JSON(http.StatusInternalServerError, map[string]string{
 				"error": "Failed to fetch todos",
 			})
@@ -43,10 +45,11 @@ func GetTodos(c echo.Context) error {
 			log.Printf("Error marshalling todos for caching: %v", err)
 		}
 
+		log.Println("Data fetched from Supabase")
 		return c.JSON(http.StatusOK, todos)
 	} else if err != nil {
 		// Redisに接続できないなどのエラー
-		log.Printf("Error fetching cache from Redis: %v", err)
+		log.Fatalf("Error fetching cache from Redis: %v", err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{
 			"error": "Failed to fetch todos",
 		})
@@ -56,18 +59,21 @@ func GetTodos(c echo.Context) error {
 	log.Println("Cache hit: returning data from Redis")
 	var todos []models.TodoData
 	if err := json.Unmarshal([]byte(cachedTodos), &todos); err != nil {
-		log.Printf("Error unmarshalling todos from cache: %v", err)
+		log.Fatalf("Error unmarshalling todos from cache: %v", err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{
 			"error": "Failed to fetch todos from cache",
 		})
 	}
 
+	log.Println("Data fetched from Redis")
 	return c.JSON(http.StatusOK, todos)
 }
 
 func CreateTodo(c echo.Context) error {
+	log.Println("Creating todo...")
 	var todo models.TodoData
 	if err := c.Bind(&todo); err != nil {
+		log.Fatalf("Error binding todo: %v", err)
 		return c.JSON(http.StatusBadRequest, map[string]string{
 			"error": "Invalid request payload",
 		})
@@ -75,6 +81,7 @@ func CreateTodo(c echo.Context) error {
 
 	// 必要なフィールドのバリデーション
 	if todo.UserID == "" || todo.Description == "" {
+		log.Fatalf("UserID and Description are required")
 		return c.JSON(http.StatusBadRequest, map[string]string{
 			"error": "UserID and Description are required",
 		})
@@ -82,30 +89,35 @@ func CreateTodo(c echo.Context) error {
 
 	// UUIDの生成
 	if todo.ID == "" {
+		log.Println("Generating UUID for todo...")
 		newUUID, err := uuid.NewRandom()
 		if err != nil {
-			log.Printf("Error generating UUID: %v", err)
+			log.Fatalf("Error generating UUID: %v", err)
 			return c.JSON(http.StatusInternalServerError, map[string]string{
 				"error": "Failed to generate UUID",
 			})
 		}
+		log.Println("Generated UUID successfully")
 		todo.ID = newUUID.String()
 	}
 
 	if err := supabase.CreateTodo(&todo); err != nil {
-		log.Printf("Error creating todo: %v", err)
+		log.Fatalf("Error creating todo: %v", err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{
 			"error": "Failed to create todo",
 		})
 	}
 
+	log.Println("Created todo successfully")
 	return c.JSON(http.StatusCreated, todo)
 }
 
 func UpdateTodo(c echo.Context) error {
+	log.Println("Updating todo...")
 	id := c.Param("id")
 	var todo models.TodoData
 	if err := c.Bind(&todo); err != nil {
+		log.Fatalf("Error binding todo: %v", err)
 		return c.JSON(http.StatusBadRequest, map[string]string{
 			"error": "Invalid request payload",
 		})
@@ -114,25 +126,29 @@ func UpdateTodo(c echo.Context) error {
 	// IDの設定
 	todo.ID = id
 
+	log.Printf("Updating todo with ID: %s", id)
 	if err := supabase.UpdateTodo(&todo); err != nil {
-		log.Printf("Error updating todo: %v", err)
+		log.Fatalf("Error updating todo: %v", err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{
 			"error": "Failed to update todo",
 		})
 	}
 
+	log.Println("Updated todo successfully")
 	return c.JSON(http.StatusOK, todo)
 }
 
 func DeleteTodo(c echo.Context) error {
+	log.Println("Deleting todo...")
 	id := c.Param("id")
 
 	if err := supabase.DeleteTodo(id); err != nil {
-		log.Printf("Error deleting todo: %v", err)
+		log.Fatalf("Error deleting todo: %v", err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{
 			"error": "Failed to delete todo",
 		})
 	}
 
+	log.Println("Deleted todo successfully")
 	return c.NoContent(http.StatusNoContent)
 }
