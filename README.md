@@ -22,9 +22,13 @@
   - Redis
   - Supabase
 
-# Architecture
+## Architecture
 
 ![アーキテクチャ図](./drawio/elasticache.drawio.png)
+
+## 注意事項
+
+詳細は [こちらのCautionファイル](./manuals/caution.md) を参照してください。
 
 ## Todo
 
