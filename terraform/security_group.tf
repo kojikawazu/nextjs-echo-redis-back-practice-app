@@ -41,6 +41,16 @@ resource "aws_security_group_rule" "app_runner_out_internet" {
   cidr_blocks       = [var.igw_address]
 }
 
+resource "aws_security_group_rule" "app_runner_out_supabase" {
+  security_group_id = aws_security_group.app_runner_sg.id
+  type              = "egress"
+  protocol          = "tcp"
+  from_port         = var.supabase_port
+  to_port           = var.supabase_port
+  cidr_blocks       = [var.igw_address]
+  description       = "Allow outbound traffic to Supabase PostgreSQL on port 6543"
+}
+
 # ElastiCache Security Group
 resource "aws_security_group" "elasticache_sg" {
   name        = "${var.project}-${var.environment}-elasticache-sg"

@@ -139,3 +139,36 @@ resource "aws_route" "public_rt_igw_r" {
   destination_cidr_block = var.igw_address
   gateway_id             = aws_internet_gateway.igw.id
 }
+
+# ---------------------------------------------
+# NAT Gateway
+# ---------------------------------------------
+resource "aws_nat_gateway" "nat_gw" {
+  allocation_id     = aws_eip.nat_eip.id
+  subnet_id         = aws_subnet.public_subnet_1a.id
+  connectivity_type = "public"
+
+  tags = {
+    Name    = "${var.project}-${var.environment}-nat-gateway"
+    Project = var.project
+    Env     = var.environment
+  }
+}
+
+resource "aws_route" "private_rt_natgw" {
+  route_table_id         = aws_route_table.private_rt.id
+  destination_cidr_block = var.igw_address
+  nat_gateway_id         = aws_nat_gateway.nat_gw.id
+}
+
+
+# ---------------------------------------------
+# Elastic IP（EIP）
+# ---------------------------------------------
+resource "aws_eip" "nat_eip" {
+  tags = {
+    Name    = "${var.project}-${var.environment}-nat-eip"
+    Project = var.project
+    Env     = var.environment
+  }
+}
