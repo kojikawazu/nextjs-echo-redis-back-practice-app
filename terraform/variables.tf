@@ -45,6 +45,10 @@ variable "redis_port" {
   type = number
 }
 
+variable "supabase_port" {
+  type = number
+}
+
 variable "supabase_url" {
   type = string
 }
