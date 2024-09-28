@@ -31,5 +31,5 @@ jobs:
           env:
                 ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY_URL }}
           run: |
-            docker build -t $ECR_REPOSITORY:latest .
-            docker push $ECR_REPOSITORY:latest
+            docker build -t $ECR_REPOSITORY_URL:latest .
+            docker push $ECR_REPOSITORY_URL:latest
