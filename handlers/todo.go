@@ -30,7 +30,7 @@ func GetTodos(c echo.Context) error {
 		log.Println("Cache miss: fetching data from Supabase")
 		todos, err := supabase.FetchTodos()
 		if err != nil {
-			log.Fatalf("Error fetching todos from Supabase: %v", err)
+			log.Printf("Error fetching todos from Supabase: %v", err)
 			return c.JSON(http.StatusInternalServerError, map[string]string{
 				"error": "Failed to fetch todos",
 			})
@@ -49,7 +49,7 @@ func GetTodos(c echo.Context) error {
 		return c.JSON(http.StatusOK, todos)
 	} else if err != nil {
 		// Redisに接続できないなどのエラー
-		log.Fatalf("Error fetching cache from Redis: %v", err)
+		log.Printf("Error fetching cache from Redis: %v", err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{
 			"error": "Failed to fetch todos",
 		})
@@ -59,7 +59,7 @@ func GetTodos(c echo.Context) error {
 	log.Println("Cache hit: returning data from Redis")
 	var todos []models.TodoData
 	if err := json.Unmarshal([]byte(cachedTodos), &todos); err != nil {
-		log.Fatalf("Error unmarshalling todos from cache: %v", err)
+		log.Printf("Error unmarshalling todos from cache: %v", err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{
 			"error": "Failed to fetch todos from cache",
 		})
@@ -73,7 +73,7 @@ func CreateTodo(c echo.Context) error {
 	log.Println("Creating todo...")
 	var todo models.TodoData
 	if err := c.Bind(&todo); err != nil {
-		log.Fatalf("Error binding todo: %v", err)
+		log.Printf("Error binding todo: %v", err)
 		return c.JSON(http.StatusBadRequest, map[string]string{
 			"error": "Invalid request payload",
 		})
@@ -81,7 +81,7 @@ func CreateTodo(c echo.Context) error {
 
 	// 必要なフィールドのバリデーション
 	if todo.UserID == "" || todo.Description == "" {
-		log.Fatalf("UserID and Description are required")
+		log.Printf("UserID and Description are required")
 		return c.JSON(http.StatusBadRequest, map[string]string{
 			"error": "UserID and Description are required",
 		})
@@ -92,7 +92,7 @@ func CreateTodo(c echo.Context) error {
 		log.Println("Generating UUID for todo...")
 		newUUID, err := uuid.NewRandom()
 		if err != nil {
-			log.Fatalf("Error generating UUID: %v", err)
+			log.Printf("Error generating UUID: %v", err)
 			return c.JSON(http.StatusInternalServerError, map[string]string{
 				"error": "Failed to generate UUID",
 			})
@@ -102,7 +102,7 @@ func CreateTodo(c echo.Context) error {
 	}
 
 	if err := supabase.CreateTodo(&todo); err != nil {
-		log.Fatalf("Error creating todo: %v", err)
+		log.Printf("Error creating todo: %v", err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{
 			"error": "Failed to create todo",
 		})
@@ -117,7 +117,7 @@ func UpdateTodo(c echo.Context) error {
 	id := c.Param("id")
 	var todo models.TodoData
 	if err := c.Bind(&todo); err != nil {
-		log.Fatalf("Error binding todo: %v", err)
+		log.Printf("Error binding todo: %v", err)
 		return c.JSON(http.StatusBadRequest, map[string]string{
 			"error": "Invalid request payload",
 		})
@@ -128,7 +128,7 @@ func UpdateTodo(c echo.Context) error {
 
 	log.Printf("Updating todo with ID: %s", id)
 	if err := supabase.UpdateTodo(&todo); err != nil {
-		log.Fatalf("Error updating todo: %v", err)
+		log.Printf("Error updating todo: %v", err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{
 			"error": "Failed to update todo",
 		})
@@ -143,7 +143,7 @@ func DeleteTodo(c echo.Context) error {
 	id := c.Param("id")
 
 	if err := supabase.DeleteTodo(id); err != nil {
-		log.Fatalf("Error deleting todo: %v", err)
+		log.Printf("Error deleting todo: %v", err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{
 			"error": "Failed to delete todo",
 		})

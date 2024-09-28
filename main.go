@@ -66,7 +66,7 @@ func main() {
 
 		// Echoサーバーのシャットダウン
 		if err := e.Close(); err != nil {
-			log.Fatalf("Echo shutdown failed: %v", err)
+			log.Printf("Echo shutdown failed: %v", err)
 		}
 
 		// Supabaseコネクションプールのクローズ

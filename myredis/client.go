@@ -23,7 +23,7 @@ func InitRedis() error {
 	log.Println("Pinging Redis server...")
 	_, err := rdb.Ping(context.Background()).Result()
 	if err != nil {
-		log.Fatalf("Failed to connect to Redis: %v", err)
+		log.Printf("Failed to connect to Redis: %v", err)
 		return err
 	}
 
