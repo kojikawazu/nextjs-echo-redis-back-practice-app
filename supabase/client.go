@@ -287,7 +287,7 @@ func TestQuery() error {
 	query := `SELECT 1`
 	rows, err := pool.Query(ctx, query)
 	if err != nil {
-		log.Fatalf("Failed to test query: %v", err)
+		log.Printf("Failed to test query: %v", err)
 		return err
 	}
 	log.Println("Test query successful")
@@ -297,7 +297,7 @@ func TestQuery() error {
 		var num int
 		err := rows.Scan(&num)
 		if err != nil {
-			log.Fatalf("Failed to scan test query result: %v", err)
+			log.Printf("Failed to scan test query result: %v", err)
 			return err
 		}
 		fmt.Println("Test Query Result:", num)
