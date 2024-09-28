@@ -2,7 +2,7 @@ services:
   app:
     build:
       context: ./backend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile_local
     container_name: go-backend
     env_file:
       - ./backend/.env

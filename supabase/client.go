@@ -22,7 +22,7 @@ func InitSupabase() error {
 
 	config, err := pgxpool.ParseConfig(supabaseURL)
 	if err != nil {
-		log.Fatalf("Unable to parse database URL: %v", err)
+		log.Printf("Unable to parse database URL: %v", err)
 		return fmt.Errorf("unable to parse database URL: %v", err)
 	}
 
@@ -35,7 +35,7 @@ func InitSupabase() error {
 	log.Println("Connecting supabase database...")
 	pool, err = pgxpool.ConnectConfig(ctx, config)
 	if err != nil {
-		log.Fatalf("Unable to connect to Supabase: %v", err)
+		log.Printf("Unable to connect to Supabase: %v", err)
 		return fmt.Errorf("unable to connect to Supabase: %v", err)
 	}
 
@@ -43,7 +43,7 @@ func InitSupabase() error {
 	log.Println("Pinging supabase database...")
 	err = pool.Ping(ctx)
 	if err != nil {
-		log.Fatalf("Unable to ping Supabase: %v", err)
+		log.Printf("Unable to ping Supabase: %v", err)
 		return fmt.Errorf("unable to ping Supabase: %v", err)
 	}
 
@@ -61,7 +61,7 @@ func FetchTodos() ([]models.TodoData, error) {
 
 	rows, err := pool.Query(ctx, query)
 	if err != nil {
-		log.Fatalf("Failed to fetch todos: %v", err)
+		log.Printf("Failed to fetch todos: %v", err)
 		return nil, err
 	}
 	log.Println("Fetched todos successfully")
@@ -80,14 +80,14 @@ func FetchTodos() ([]models.TodoData, error) {
 			&todo.UpdatedAt,
 		)
 		if err != nil {
-			log.Fatalf("Failed to scan todo: %v", err)
+			log.Printf("Failed to scan todo: %v", err)
 			return nil, err
 		}
 		todos = append(todos, todo)
 	}
 
 	if rows.Err() != nil {
-		log.Fatalf("Failed to fetch todos: %v", rows.Err())
+		log.Printf("Failed to fetch todos: %v", rows.Err())
 		return nil, rows.Err()
 	}
 
@@ -95,8 +95,43 @@ func FetchTodos() ([]models.TodoData, error) {
 	return todos, nil
 }
 
-func CreateTodo(todo *models.TodoData) error {
+func CreateTodo(todo *models.TodoData) (err error) {
 	log.Println("Creating todo in Supabase...")
+
+	// トランザクションを開始
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		log.Printf("Failed to start transaction: %v", err)
+		return err
+	}
+
+	// deferでトランザクションのロールバックとコミットを管理
+	defer func() {
+		if p := recover(); p != nil {
+			// パニックが発生した場合はロールバック
+			log.Println("Panic occurred, rolling back transaction")
+			if rollbackErr := tx.Rollback(ctx); rollbackErr != nil {
+				log.Printf("Failed to rollback transaction: %v", rollbackErr)
+			}
+			panic(p) // panicを再スロー
+		} else if err != nil {
+			// エラーがあった場合はロールバック
+			log.Println("Rolling back transaction due to error")
+			if rollbackErr := tx.Rollback(ctx); rollbackErr != nil {
+				log.Printf("Failed to rollback transaction: %v", rollbackErr)
+				// Rollbackのエラーも呼び出し元に返す場合
+				err = fmt.Errorf("transaction error: %v, rollback error: %v", err, rollbackErr)
+			}
+		} else {
+			// 正常に処理が終わった場合はコミット
+			log.Println("Committing transaction")
+			if commitErr := tx.Commit(ctx); commitErr != nil {
+				log.Printf("Failed to commit transaction: %v", commitErr)
+				err = commitErr
+			}
+		}
+	}()
+
 	query := `
         INSERT INTO todos (id, user_id, description, completed, created_at, updated_at)
         VALUES ($1, $2, $3, $4, $5, $6)
@@ -107,9 +142,10 @@ func CreateTodo(todo *models.TodoData) error {
 	todo.CreatedAt = now
 	todo.UpdatedAt = now
 
-	_, err := pool.Exec(ctx, query, todo.ID, todo.UserID, todo.Description, todo.Completed, todo.CreatedAt, todo.UpdatedAt)
+	// トランザクション内でクエリ実行
+	_, err = tx.Exec(ctx, query, todo.ID, todo.UserID, todo.Description, todo.Completed, todo.CreatedAt, todo.UpdatedAt)
 	if err != nil {
-		log.Fatalf("Failed to create todo: %v", err)
+		log.Printf("Failed to create todo: %v", err)
 		return err
 	}
 
@@ -117,24 +153,62 @@ func CreateTodo(todo *models.TodoData) error {
 	return nil
 }
 
-func UpdateTodo(todo *models.TodoData) error {
+func UpdateTodo(todo *models.TodoData) (err error) {
 	log.Println("Updating todo in Supabase...")
+
+	// トランザクションを開始
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		log.Printf("Failed to start transaction: %v", err)
+		return err
+	}
+
+	// deferでトランザクションのロールバックとコミットを管理
+	defer func() {
+		if p := recover(); p != nil {
+			// パニックが発生した場合はロールバック
+			log.Println("Panic occurred, rolling back transaction")
+			if rollbackErr := tx.Rollback(ctx); rollbackErr != nil {
+				log.Printf("Failed to rollback transaction: %v", rollbackErr)
+			}
+			panic(p) // panicを再スロー
+		} else if err != nil {
+			// エラーがあった場合はロールバック
+			log.Println("Rolling back transaction due to error")
+			if rollbackErr := tx.Rollback(ctx); rollbackErr != nil {
+				log.Printf("Failed to rollback transaction: %v", rollbackErr)
+				// Rollbackのエラーも呼び出し元に返す場合
+				err = fmt.Errorf("transaction error: %v, rollback error: %v", err, rollbackErr)
+			}
+		} else {
+			// 正常に処理が終わった場合はコミット
+			log.Println("Committing transaction")
+			if commitErr := tx.Commit(ctx); commitErr != nil {
+				log.Printf("Failed to commit transaction: %v", commitErr)
+				err = commitErr
+			}
+		}
+	}()
+
 	query := `
         UPDATE todos
         SET user_id = $1, description = $2, completed = $3, updated_at = $4
         WHERE id = $5
     `
 
+	// 更新時刻の設定
 	todo.UpdatedAt = time.Now()
 
-	cmdTag, err := pool.Exec(ctx, query, todo.UserID, todo.Description, todo.Completed, todo.UpdatedAt, todo.ID)
+	// トランザクション内でクエリ実行
+	cmdTag, err := tx.Exec(ctx, query, todo.UserID, todo.Description, todo.Completed, todo.UpdatedAt, todo.ID)
 	if err != nil {
-		log.Fatalf("Failed to update todo: %v", err)
+		log.Printf("Failed to update todo: %v", err)
 		return err
 	}
 
+	// 更新対象のtodoが存在しない場合
 	if cmdTag.RowsAffected() == 0 {
-		log.Fatalf("No todo found with id %s", todo.ID)
+		log.Printf("No todo found with id %s", todo.ID)
 		return fmt.Errorf("no todo found with id %s", todo.ID)
 	}
 
@@ -142,21 +216,58 @@ func UpdateTodo(todo *models.TodoData) error {
 	return nil
 }
 
-func DeleteTodo(id string) error {
+func DeleteTodo(id string) (err error) {
 	log.Println("Deleting todo in Supabase...")
+
+	// トランザクションを開始
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		log.Printf("Failed to start transaction: %v", err)
+		return err
+	}
+
+	// deferでトランザクションのロールバックとコミットを管理
+	defer func() {
+		if p := recover(); p != nil {
+			// パニックが発生した場合はロールバック
+			log.Println("Panic occurred, rolling back transaction")
+			if rollbackErr := tx.Rollback(ctx); rollbackErr != nil {
+				log.Printf("Failed to rollback transaction: %v", rollbackErr)
+			}
+			panic(p) // panicを再スロー
+		} else if err != nil {
+			// エラーがあった場合はロールバック
+			log.Println("Rolling back transaction due to error")
+			if rollbackErr := tx.Rollback(ctx); rollbackErr != nil {
+				log.Printf("Failed to rollback transaction: %v", rollbackErr)
+				// Rollbackのエラーも呼び出し元に返す場合
+				err = fmt.Errorf("transaction error: %v, rollback error: %v", err, rollbackErr)
+			}
+		} else {
+			// 正常に処理が終わった場合はコミット
+			log.Println("Committing transaction")
+			if commitErr := tx.Commit(ctx); commitErr != nil {
+				log.Printf("Failed to commit transaction: %v", commitErr)
+				err = commitErr
+			}
+		}
+	}()
+
 	query := `
         DELETE FROM todos
         WHERE id = $1
     `
 
-	cmdTag, err := pool.Exec(ctx, query, id)
+	// トランザクション内でクエリ実行
+	cmdTag, err := tx.Exec(ctx, query, id)
 	if err != nil {
-		log.Fatalf("Failed to delete todo: %v", err)
+		log.Printf("Failed to delete todo: %v", err)
 		return err
 	}
 
+	// 削除対象のtodoが存在しない場合
 	if cmdTag.RowsAffected() == 0 {
-		log.Fatalf("No todo found with id %s", id)
+		log.Printf("No todo found with id %s", id)
 		return fmt.Errorf("no todo found with id %s", id)
 	}
 
